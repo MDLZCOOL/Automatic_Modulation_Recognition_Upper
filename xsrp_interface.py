@@ -1,229 +1,106 @@
-from __future__ import division
 import numpy as np
 import socket
 
 
-class XSRPDeviceInterface:
-    """
-    Interface for communicating with XSRP device
-    """
-
-    def __init__(self, pc_ip='192.168.1.180', xsrp_ip='192.168.1.166', timeout=5):
-        """
-        Initialize the XSRP device interface
-        
-        Args:
-            pc_ip (str): IP address of the PC
-            xsrp_ip (str): IP address of the XSRP device
-            timeout (int): Socket timeout in seconds
-        """
-        self.pc_ip = pc_ip
-        self.xsrp_ip = xsrp_ip
-        self.timeout = timeout
+class XSRPDeviceGetData:
+    def __init__(self, window_length: int):
+        self.pc_ip = '192.168.1.180'
+        self.xsrp_ip = '192.168.1.166'
+        self.window_length = window_length
         self.max_len = 192
-        self.sample_length = self.max_len * 160
+        self.result = None
+        self.result_i = None
+        self.result_q = None
+        self.data_list = None
+        self.label_list = []
+        self.idx = 0
 
-        # Setup UDP socket
-        self.udp_addr = (self.pc_ip, 12345)
-        self.dest_addr = (self.xsrp_ip, 13345)
-        self.udp_socket = None
-
-    def _setup_socket(self):
-        """Set up the UDP socket for communication"""
-        if self.udp_socket:
-            self.udp_socket.close()
-
-        self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.udp_socket.bind(self.udp_addr)
-        self.udp_socket.settimeout(self.timeout)
-
-    def _send_command(self, hex_command="000099bb66010001008000F00000000000000000"):
-        """
-        Send a command to the device
-        
-        Args:
-            hex_command (str): Hexadecimal command string
-            
-        Returns:
-            bool: True if command was sent successfully
-        """
-        if not self.udp_socket:
-            self._setup_socket()
-
-        try:
-            send_data = bytes.fromhex(hex_command)
-            self.udp_socket.sendto(send_data, self.dest_addr)
-            return True
-        except Exception as e:
-            print(f"Error sending command: {e}")
-            return False
-
-    def _receive_data(self, expected_size=None):
-        """
-        Receive data from the device
-        
-        Args:
-            expected_size (int): Expected size of data in bytes
-            
-        Returns:
-            bytes: Received data
-        """
-        if not self.udp_socket:
-            self._setup_socket()
-
-        recv_data_all = None
-
-        try:
+        udp_addr = (self.pc_ip, 12345)
+        dest_addr = (self.xsrp_ip, 13345)
+        udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        udp_socket.bind(udp_addr)
+        udp_socket.settimeout(5)
+        while True:
+            # sending commend begin
+            hex_data = "000099bb66010001008000F00000000000000000"
+            send_data = bytes.fromhex(hex_data)
+            udp_socket.sendto(send_data, dest_addr)
+            # sending end
+            # receiving data begin
+            recv_data_all = None
             for package_id in range(128):
                 try:
-                    recv_data, source = self.udp_socket.recvfrom(960)  # 960 bytes max per packet
+                    recv_data, source = udp_socket.recvfrom(960)
                     if recv_data_all:
                         recv_data_all = recv_data_all + recv_data
                     else:
                         recv_data_all = recv_data
-
-                    # If we have received the expected amount of data, stop
-                    if expected_size and len(recv_data_all) >= expected_size:
-                        break
-
                 except socket.timeout:
                     print("Timeout occurred, no data received.")
                     break
-        except Exception as e:
-            print(f"Error receiving data: {e}")
-
-        return recv_data_all
-
-    def _process_raw_data(self, raw_data):
-        """
-        Process raw data received from the device
-        
-        Args:
-            raw_data (bytes): Raw data from device
-            
-        Returns:
-            tuple: Processed I and Q data arrays
-        """
-        if not raw_data:
-            return None, None
-
-        # Convert bytes to uint8
-        recv_data_all_uint8 = np.frombuffer(raw_data, dtype=np.uint8)
-
-        # Convert to double
+            if len(recv_data_all) == self.max_len * 160 * 4:
+                break
+        # receiving end
+        recv_data_all_uint8 = np.zeros(len(recv_data_all))
+        for i in range(len(recv_data_all)):
+            recv_data_all_uint8[i] = np.uint8(recv_data_all[i])
         recv_data_all_double = np.array(recv_data_all_uint8, dtype=np.double)
-
-        # Process I and Q components
-        data_length = len(recv_data_all_double) // 4
-        udp_data_ri = np.zeros(data_length)
-        udp_data_rq = np.zeros(data_length)
-
-        for m in range(data_length):
+        udp_data_ri = np.zeros(int(len(recv_data_all) / 4))
+        udp_data_rq = np.zeros(int(len(recv_data_all) / 4))
+        for m in range(int(len(recv_data_all) / 4)):
             udp_data_ri[m] = recv_data_all_double[m * 4] * 256 + recv_data_all_double[m * 4 + 1]
             udp_data_rq[m] = recv_data_all_double[m * 4 + 2] * 256 + recv_data_all_double[m * 4 + 3]
-
-            # Handle negative numbers
             if udp_data_ri[m] >= 2049:
                 udp_data_ri[m] = udp_data_ri[m] - 4096
             if udp_data_rq[m] >= 2049:
                 udp_data_rq[m] = udp_data_rq[m] - 4096
-
-        # Normalize
         udp_data_ri = udp_data_ri / 2047
         udp_data_rq = udp_data_rq / 2047
-
-        # Reshape
         udp_data_ri = np.reshape(udp_data_ri, (self.max_len, 160))
         udp_data_ri = udp_data_ri[:, 32:160]
         udp_data_rq = np.reshape(udp_data_rq, (self.max_len, 160))
         udp_data_rq = udp_data_rq[:, 32:160]
 
-        return udp_data_ri, udp_data_rq
+        # 使用window_length参数
+        if self.window_length > self.max_len:
+            self.window_length = self.max_len
+            print(f"Warning: window_length exceeds max_len, setting to {self.max_len}")
 
-    def get_data(self, command_hex=None, window_length=192):
-        """
-        Get data from the device
-        
-        Args:
-            command_hex (str): Optional hex command to send before receiving data
-            window_length (int): Optional window length of received data
-            
-        Returns:
-            dict: Dictionary containing the received data
-                - 'i_data': I component data
-                - 'q_data': Q component data
-                - 'combined': Combined I and Q data
-                - 'normalized': Normalized data array
-        """
-        self._setup_socket()
+        self.result_i = udp_data_ri[0]
+        self.result_q = udp_data_rq[0]
+        for n in range(1, self.window_length):
+            self.result_i = np.hstack((self.result_i, udp_data_ri[n]))
+            self.result_q = np.hstack((self.result_q, udp_data_rq[n]))
+        self.result = np.hstack((self.result_i, self.result_q))
 
-        # Send command if provided, otherwise use default
-        if command_hex:
-            self._send_command(command_hex)
-        else:
-            self._send_command()
-
-        # Receive data
-        raw_data = self._receive_data(expected_size=self.sample_length * 4)
-
-        if not raw_data or len(raw_data) != self.sample_length * 4:
-            print(f"Error: Received {len(raw_data) if raw_data else 0} bytes, expected {self.sample_length * 4}")
-            return None
-
-        # Process data
-        udp_data_ri, udp_data_rq = self._process_raw_data(raw_data)
-
-        # Flatten I and Q data
-        result_i = udp_data_ri[0]
-        result_q = udp_data_rq[0]
-
-        for n in range(1, window_length):
-            result_i = np.hstack((result_i, udp_data_ri[n]))
-            result_q = np.hstack((result_q, udp_data_rq[n]))
-
-        # Combined data
-        result = np.hstack((result_q, result_i))
-
-        # Create normalized 2D array
-        data = np.zeros((self.max_len, 256))
+        data_ = np.zeros((self.max_len, 256))
         for i in range(self.max_len):
             for j in range(128):
-                data[i][j] = udp_data_ri[i][j]
-                data[i][j + 128] = udp_data_rq[i][j]
+                data_[i][j] = udp_data_ri[i][j]
+                data_[i][j + 128] = udp_data_rq[i][j]
+        for i in range(data_.shape[0]):
+            data_[i] = data_[i] / np.max(data_[i])
+        self.data_list = data_.astype(np.float32)
 
-        # Normalize each row
-        for i in range(data.shape[0]):
-            max_val = np.max(np.abs(data[i]))
-            if max_val > 0:
-                data[i] = data[i] / max_val
+    def __next__(self):
+        if self.idx >= len(self.data_list):
+            raise StopIteration
+        else:
+            item = (self.data_list[self.idx], self.label_list[self.idx])
+            self.idx = self.idx + 1
+            return item
 
-        return {
-            'i_data': result_i,
-            'q_data': result_q,
-            'combined': result,
-            'normalized': data.astype(np.float32)
-        }
+    def __iter__(self):
+        self.idx = 0
+        return self
 
-    def close(self):
-        """Close the UDP socket"""
-        if self.udp_socket:
-            self.udp_socket.close()
-            self.udp_socket = None
+    def __len__(self):
+        return len(self.data_list)
 
 
-# Example usage
+# 示例调用
 if __name__ == '__main__':
-    # Create device interface
-    device = XSRPDeviceInterface()
-
-    # Get data from device (please note window_length)
-    data = device.get_data(window_length=2)
-
-    if data:
-        print(f"I data shape: {data['i_data'].shape}")
-        print(f"Q data shape: {data['q_data'].shape}")
-        print(f"Combined data shape: {data['combined'].shape}")
-        print(f"Normalized data shape: {data['normalized'].shape}")
-
-    # Close the connection
-    device.close()
+    data = XSRPDeviceGetData(window_length=8)
+    print(f"result_i shape: {data.result_i.shape}")
+    print(f"result_q shape: {data.result_q.shape}")
+    print(f"result shape: {data.result.shape}")
