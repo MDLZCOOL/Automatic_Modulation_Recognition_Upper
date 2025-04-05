@@ -31,6 +31,9 @@ ApplicationWindow {
                 // axisY.applyNiceNumbers();
             }
         }
+        onPredictionUpdate: data => {
+            predictionLabel.text = "预测结果: " + data;
+        }
     }
     FileDialog {
         id: fileDialog
@@ -54,14 +57,7 @@ ApplicationWindow {
         }
     }
 
-    Timer {
-        interval: 1000
-        repeat: true
-        running: true
-        onTriggered: {
-            axisY.applyNiceNumbers();
-        }
-    }
+
 
     ColumnLayout {
         anchors.fill: parent
@@ -168,6 +164,7 @@ ApplicationWindow {
                     text: "设备状态： %1".arg("正常")
                 }
                 Label {
+                    id: predictionLabel
                     text: "预测值: %1".arg("AM")
                 }
                 Label {

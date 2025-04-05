@@ -18,17 +18,20 @@ QML_IMPORT_MINOR_VERSION = 0
 @QmlElement
 class DataSource(QObject):
     dataUpdate = Signal(list[list])
+    predictionUpdate = Signal(str)
 
     @Slot()
     async def update_data(self) -> None:
         """Update data and emit signal"""
         # Simulate data generation
-        data = await xsrp_interface.XSRPDeviceGetData(self.window_length)
+        data = await asyncio.to_thread(lambda :xsrp_interface.XSRPDeviceGetData(self.window_length))
         self.dataUpdate.emit([data.result_i, data.result_q])
+        prediction = await asyncio.to_thread(lambda: self.classifier.predict(data.result))
+        self.predictionUpdate.emit(prediction)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         print("DataSource initialized")
-        self.window_length = 128
+        self.window_length = 1024
         self.classifier = model_interface.ModulationClassifier("Automatic-Modulation-Recognition-Model/model.pth")
         
