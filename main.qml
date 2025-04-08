@@ -9,7 +9,7 @@ import io.qt.textproperties 1.0
 
 ApplicationWindow {
 
-    id: mainWindow  
+    id: mainWindow
 
     property string modelPath: ""
     property string deviceAddress: ""
@@ -24,11 +24,27 @@ ApplicationWindow {
     DataSource {
         id: dataSource
         onDataUpdate: data => {
-            
+
             for (let point in data[0]) {
-                // console.log("接收到数据: " + point);
+                console.log("接收到数据: " + point);
                 chartView.addPoint(data[0][point], data[1][point]);
-                // axisY.applyNiceNumbers();
+
+            }
+            let real_max = axisY.min = Math.max(...data[0])
+            let imaginary_max = axisY.max = Math.max(...data[1])
+            let real_min = axisY.min = Math.min(...data[0])
+            let imaginary_min = axisY.min = Math.min(...data[1])
+            if (real_max > imaginary_max) {
+                axisY.max = real_max;
+            }
+            else {
+                axisY.max = imaginary_max;
+            }
+            if (real_min < imaginary_min) {
+                axisY.min = real_min;
+            }
+            else {
+                axisY.min = imaginary_min;
             }
         }
         onPredictionUpdate: data => {
@@ -49,7 +65,7 @@ ApplicationWindow {
 
     Timer {
         id: timer
-        interval: 1
+        interval: 3000
         repeat: true
         running: true
         onTriggered: {
@@ -69,40 +85,8 @@ ApplicationWindow {
                 spacing: 10
                 Layout.alignment: Qt.AlignHCenter
                 anchors.fill: parent
-                ToolButton {
-                    text: "开始"
-                    onClicked: {
-                        // timer.running = true;
-                        axisX.min = 0;
-                        axisX.max = 1024;
 
-                        realSeries.clear();
-                        imaginarySeries.clear();
-                    }
-                }
-                ToolButton {
-                    text: "停止"
-                    onClicked: timer.running = false
-                }
-                ToolButton {
-                    text: "选择文件"
-                    onClicked: {
-                        fileDialog.open();
-                    }
-                }
 
-                Label {
-                    text: "设备地址:"
-                }
-                TextArea {
-                    id: inputField
-                    font.pixelSize: 15
-                    Layout.fillWidth: true
-                }
-                ToolButton {
-                    text: "连接"
-                    
-                }
             }
         }
 
@@ -123,10 +107,11 @@ ApplicationWindow {
             }
             ValueAxis {
                 id: axisY
-                
+                min: -0.5
+                max: 0.5
                 titleText: "幅值"
 
-                
+
             }
 
             LineSeries {
@@ -164,15 +149,21 @@ ApplicationWindow {
                     text: "设备状态： %1".arg("正常")
                 }
                 Label {
-                    id: predictionLabel
-                    text: "预测值: %1".arg("AM")
+                id: predictionLabel
+                text: "预测值: %1".arg("AM")
+                font.pixelSize: 26
+                font.bold: true
+                color: "white"
+                background: Rectangle {
+                    color: "#e53935"      // 更鲜艳的红
+                    radius: 12
+                    border.color: "black"
+                    border.width: 1
                 }
-                Label {
-                    text: "置信度: %1".arg("0.99")
-                }
-                Label {
-                    text: "模型路径: %1".arg(modelPath)
-                }
+                padding: 10
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+}
             }
         }
     }

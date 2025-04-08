@@ -1,3 +1,6 @@
 [submodule "Automatic-Modulation-Recognition-Model"]
 	path = Automatic-Modulation-Recognition-Model
 	url = https://github.com/MDLZCOOL/Automatic-Modulation-Recognition-Model/
+[submodule "Automatic_Modulation_Recognition_Model"]
+	path = Automatic_Modulation_Recognition_Model
+	url = https://github.com/MDLZCOOL/Automatic_Modulation_Recognition_Model/
