@@ -229,7 +229,7 @@ ApplicationWindow {
                         }
                         ComboBox {
                             id: workModeCombo
-                            model: [qsTr("正常模式"), qsTr("测试模式")]
+                            model: [qsTr("正常模式"), qsTr("上行载波模式"), qsTr("下行载波模式")]
                             currentIndex: 0
                             onCurrentTextChanged: {
                                 console.log("工作模式改变为: " + workModeCombo.currentText);
