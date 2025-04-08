@@ -23,6 +23,22 @@ ApplicationWindow {
             for (let i = 0; i < data[0].length; ++i) {
                 chartView.addPoint(data[0][i], data[1][i]);
             }
+            let real_max = axisY.min = Math.max(...data[0])
+            let imaginary_max = axisY.max = Math.max(...data[1])
+            let real_min = axisY.min = Math.min(...data[0])
+            let imaginary_min = axisY.min = Math.min(...data[1])
+            if (real_max > imaginary_max) {
+                axisY.max = real_max;
+            }
+            else {
+                axisY.max = imaginary_max;
+            }
+            if (real_min < imaginary_min) {
+                axisY.min = real_min;
+            }
+            else {
+                axisY.min = imaginary_min;
+            }
         }
         onPredictionUpdate: data => {
             predictionLabel.text = qsTr("预测结果: %1").arg(data);
