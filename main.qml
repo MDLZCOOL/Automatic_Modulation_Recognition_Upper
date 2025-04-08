@@ -417,11 +417,6 @@ ApplicationWindow {
                             }
                         }
                     }
-                    Button {
-                        text: qsTr("写入全部")
-                        Layout.columnSpan: 2
-                        
-                    }
                 }
             }
         }
