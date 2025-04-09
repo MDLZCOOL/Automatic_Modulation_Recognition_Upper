@@ -87,7 +87,8 @@ ApplicationWindow {
                     onClicked: fileDialog.open()
                 }
                 Label {
-                    text: qsTr("设备地址:")
+                    // TODO: add device address
+                    text: qsTr("设备地址: 192.168.1.166")
                 }
             }
         }
@@ -150,7 +151,7 @@ ApplicationWindow {
                         id: predictionLabel
                         anchors.left: parent.left
                         anchors.top: predictionLabel.top
-                        text: qsTr("预测结果: %1").arg("AM")
+                        text: qsTr("预测结果: %1").arg("请开启输入")
                         font.pixelSize: 50
                         font.bold: true
                         color: "Red"
@@ -433,7 +434,8 @@ ApplicationWindow {
                     text: qsTr("设备状态: XSRP %1 DG70004 %2 DS81304 %3").arg("🟢️").arg("🟢️").arg("🟢️")
                 }
                 Label {
-                    text: qsTr("模型路径: %1").arg(modelPath)
+                    // TODO: set model
+                    text: qsTr("模型路径: ./model.pth").arg(modelPath)
                 }
             }
         }
